@@ -37,22 +37,15 @@ if selected_category:
         selected_substat = st.selectbox(f"📊 Wähle eine Stat aus `{selected_category}`:", sorted(all_substats))
 
         if selected_substat:
-            st.subheader(f"Top Spieler für: `{selected_category} → {selected_substat}``")
-
             # Werte auslesen und DataFrame bauen
             records = []
             for player in data:
                 name = player.get("name", player.get("uuid", "Unbekannt"))
                 value = player.get(selected_category, {}).get(selected_substat, 0)
-                records.append({"name": name, "value": value})
+                records.append({"Spieler": name, "Wert": value})
 
-            df = pd.DataFrame(records).sort_values("value", ascending=False)
+            df = pd.DataFrame(records).sort_values("Wert", ascending=False)
 
             st.dataframe(df, use_container_width=True)
-
-            if (df["value"] > 0).any():
-                st.bar_chart(df.set_index("name").head(20))
-            else:
-                st.info("📊 Keine Werte größer 0 für dieses Stat vorhanden.")
     else:
         st.info("In dieser Kategorie gibt es keine Einträge.")
