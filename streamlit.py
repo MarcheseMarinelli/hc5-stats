@@ -44,8 +44,9 @@ if selected_category:
                 value = player.get(selected_category, {}).get(selected_substat, 0)
                 records.append({"Spieler": name, "Wert": value})
 
-            df = pd.DataFrame(records).sort_values("Wert", ascending=False)
+            df = pd.DataFrame(records).sort_values("Wert", ascending=False).reset_index(drop=True)
 
-            st.dataframe(df, use_container_width=True)
+            # Tabelle ohne Index-Spalte anzeigen
+            st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.info("In dieser Kategorie gibt es keine Einträge.")
