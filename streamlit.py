@@ -10,44 +10,49 @@ def load_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             data.append(json.loads(line))
-    return pd.DataFrame(data)
+    return data
 
-df = load_data("all_players_stats.jsonl")
+data = load_data("all_players_stats.jsonl")
 
 st.title("🎮 Minecraft Server Stats Dashboard")
 
-# Kategorien herausfiltern (z.B. minecraft:mined, minecraft:crafted)
-category_keys = [col for col in df.columns if ":" in col and not col.count(":") == 1]
-top_level_categories = sorted(set(k.split(":")[0] + ":" + k.split(":")[1] for k in category_keys))
+# Alle Kategorien herausfinden
+all_categories = set()
+for player in data:
+    for key, value in player.items():
+        if isinstance(value, dict):
+            all_categories.add(key)
 
-selected_category = st.selectbox("📚 Wähle eine Stat-Kategorie:", top_level_categories)
+selected_category = st.selectbox("📚 Wähle eine Stat-Kategorie:", sorted(all_categories))
 
 if selected_category:
-    # Alle verfügbaren Sub-Stats in der Kategorie extrahieren
-    substats = sorted(set(col.split(":")[2] for col in category_keys if col.startswith(selected_category)))
+    # Alle Substats dieser Kategorie finden
+    all_substats = set()
+    for player in data:
+        substats = player.get(selected_category, {})
+        if isinstance(substats, dict):
+            all_substats.update(substats.keys())
 
-    selected_substat = st.selectbox(f"📊 Wähle eine Stat aus der Kategorie `{selected_category}`:", substats)
+    if all_substats:
+        selected_substat = st.selectbox(f"📊 Wähle eine Stat aus `{selected_category}`:", sorted(all_substats))
 
-    if selected_substat:
-        full_stat_key = f"{selected_category}:{selected_substat}"
+        if selected_substat:
+            st.subheader(f"Top Spieler für: `{selected_category} → {selected_substat}``")
 
-        st.subheader(f"Top Spieler für: `{full_stat_key}`")
+            # Werte auslesen und DataFrame bauen
+            records = []
+            for player in data:
+                name = player.get("name", player.get("uuid", "Unbekannt"))
+                value = player.get(selected_category, {}).get(selected_substat, 0)
+                records.append({"name": name, "value": value})
 
-        if full_stat_key in df.columns:
-            if df[full_stat_key].apply(lambda x: isinstance(x, (int, float))).any():
-                df_sorted = df[["name", full_stat_key]].copy()
-                df_sorted[full_stat_key] = df_sorted[full_stat_key].apply(
-                    lambda x: x if isinstance(x, (int, float)) else 0
-                )
-                df_sorted = df_sorted.sort_values(full_stat_key, ascending=False)
+            df = pd.DataFrame(records).sort_values("value", ascending=False)
 
-                st.dataframe(df_sorted, use_container_width=True)
+            st.dataframe(df, use_container_width=True)
 
-                if (df_sorted[full_stat_key] > 0).any():
-                    st.bar_chart(df_sorted.set_index("name").head(20))
-                else:
-                    st.info("📊 Keine Werte größer 0 für dieses Stat vorhanden.")
+            if (df["value"] > 0).any():
+                st.bar_chart(df.set_index("name").head(20))
             else:
-                st.warning("⚠️ Diese Stat enthält komplexe Werte und kann nicht direkt angezeigt werden.")
-        else:
-            st.error("Stat nicht gefunden.")
+                st.info("📊 Keine Werte größer 0 für dieses Stat vorhanden.")
+    else:
+        st.info("In dieser Kategorie gibt es keine Einträge.")
