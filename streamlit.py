@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 
-st.set_page_config(page_title="Minecraft Server Stats", layout="wide")
+st.set_page_config(page_title="Minecraft Server Stats Dashboard", layout="wide")
 
 @st.cache_data
 def load_data(file_path):
@@ -16,31 +16,38 @@ df = load_data("all_players_stats.jsonl")
 
 st.title("🎮 Minecraft Server Stats Dashboard")
 
-# Auswahlbox für Stat-Namen (alle Keys außer uuid und name)
-stat_keys = [col for col in df.columns if ":" in col]
+# Kategorien herausfiltern (z.B. minecraft:mined, minecraft:crafted)
+category_keys = [col for col in df.columns if ":" in col and not col.count(":") == 1]
+top_level_categories = sorted(set(k.split(":")[0] + ":" + k.split(":")[1] for k in category_keys))
 
-selected_stat = st.selectbox("📊 Wähle eine Stat:", sorted(stat_keys))
+selected_category = st.selectbox("📚 Wähle eine Stat-Kategorie:", top_level_categories)
 
-if selected_stat:
-    st.subheader(f"Top Spieler für: `{selected_stat}`")
+if selected_category:
+    # Alle verfügbaren Sub-Stats in der Kategorie extrahieren
+    substats = sorted(set(col.split(":")[2] for col in category_keys if col.startswith(selected_category)))
 
-    if selected_stat in df.columns:
-        # Prüfen ob Werte numerisch sind
-        if df[selected_stat].apply(lambda x: isinstance(x, (int, float))).any():
-            df_sorted = df[["name", selected_stat]].copy()
-            df_sorted[selected_stat] = df_sorted[selected_stat].apply(
-                lambda x: x if isinstance(x, (int, float)) else 0
-            )
-            df_sorted = df_sorted.sort_values(selected_stat, ascending=False)
+    selected_substat = st.selectbox(f"📊 Wähle eine Stat aus der Kategorie `{selected_category}`:", substats)
 
-            st.dataframe(df_sorted, use_container_width=True)
+    if selected_substat:
+        full_stat_key = f"{selected_category}:{selected_substat}"
 
-            # Prüfen ob wenigstens ein Wert > 0 existiert für's Diagramm
-            if (df_sorted[selected_stat] > 0).any():
-                st.bar_chart(df_sorted.set_index("name").head(20))
+        st.subheader(f"Top Spieler für: `{full_stat_key}`")
+
+        if full_stat_key in df.columns:
+            if df[full_stat_key].apply(lambda x: isinstance(x, (int, float))).any():
+                df_sorted = df[["name", full_stat_key]].copy()
+                df_sorted[full_stat_key] = df_sorted[full_stat_key].apply(
+                    lambda x: x if isinstance(x, (int, float)) else 0
+                )
+                df_sorted = df_sorted.sort_values(full_stat_key, ascending=False)
+
+                st.dataframe(df_sorted, use_container_width=True)
+
+                if (df_sorted[full_stat_key] > 0).any():
+                    st.bar_chart(df_sorted.set_index("name").head(20))
+                else:
+                    st.info("📊 Keine Werte größer 0 für dieses Stat vorhanden.")
             else:
-                st.info("📊 Keine Werte größer 0 für dieses Stat vorhanden.")
+                st.warning("⚠️ Diese Stat enthält komplexe Werte und kann nicht direkt angezeigt werden.")
         else:
-            st.warning("⚠️ Diese Stat enthält komplexe Werte (z.B. Dictionary) und kann nicht direkt angezeigt werden.")
-    else:
-        st.error("Stat nicht gefunden.")
+            st.error("Stat nicht gefunden.")
