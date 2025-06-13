@@ -2,30 +2,40 @@ import streamlit as st
 import pandas as pd
 import json
 
-# JSONL laden und in DataFrame packen
-data = []
-with open("all_players_stats.jsonl", "r", encoding="utf-8") as f:
-    for line in f:
-        data.append(json.loads(line))
+st.set_page_config(page_title="Minecraft Server Stats", layout="wide")
 
-df = pd.DataFrame(data)
+@st.cache_data
+def load_data(file_path):
+    data = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            data.append(json.loads(line))
+    return pd.DataFrame(data)
 
-st.title("Minecraft Server Stats")
+df = load_data("all_players_stats.jsonl")
 
-# Auswahlbox für Stat-Namen
-all_stats = []
-for col in df.columns:
-    if ":" in col:  # Nur Stat-Keys
-        all_stats.append(col)
+st.title("🎮 Minecraft Server Stats Dashboard")
 
-selected_stat = st.selectbox("Wähle eine Stat:", sorted(all_stats))
+# Auswahlbox für Stat-Namen (alle Keys außer uuid und name)
+stat_keys = [col for col in df.columns if ":" in col]
 
-# Anzeige sortierte Tabelle
-if selected_stat in df.columns:
-    st.subheader(f"Top Spieler für: {selected_stat}")
-    df_sorted = df[["name", selected_stat]].fillna(0).sort_values(selected_stat, ascending=False)
-    st.dataframe(df_sorted)
+selected_stat = st.selectbox("📊 Wähle eine Stat:", sorted(stat_keys))
 
-    st.bar_chart(df_sorted.set_index("name").head(10))
-else:
-    st.write("Stat nicht gefunden.")
+if selected_stat:
+    st.subheader(f"Top Spieler für: `{selected_stat}``")
+
+    # Prüfen ob die Stat-Spalte existiert und ob die Werte numerisch sind
+    if selected_stat in df.columns:
+        if df[selected_stat].apply(lambda x: isinstance(x, (int, float))).any():
+            df_sorted = df[["name", selected_stat]].copy()
+            df_sorted[selected_stat] = df_sorted[selected_stat].apply(
+                lambda x: x if isinstance(x, (int, float)) else 0
+            )
+            df_sorted = df_sorted.sort_values(selected_stat, ascending=False)
+
+            st.dataframe(df_sorted, use_container_width=True)
+            st.bar_chart(df_sorted.set_index("name").head(20))
+        else:
+            st.warning("⚠️ Diese Stat enthält komplexe Werte (z.B. Dictionary) und kann nicht direkt angezeigt werden.")
+    else:
+        st.error("Stat nicht gefunden.")
