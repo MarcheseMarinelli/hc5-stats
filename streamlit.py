@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 
-st.set_page_config(page_title="Minecraft Server Stats Dashboard", layout="wide")
+st.set_page_config(page_title="Stats von Highclimb 5", layout="wide")
 
 @st.cache_data
 def load_data(file_path):
@@ -14,7 +14,7 @@ def load_data(file_path):
 
 data = load_data("all_players_stats.jsonl")
 
-st.title("🎮 Minecraft Server Stats Dashboard")
+st.title("⛰️ Stats von Highclimb 5")
 
 # Alle Kategorien herausfinden
 all_categories = set()
@@ -34,7 +34,7 @@ if selected_category:
             all_substats.update(substats.keys())
 
     if all_substats:
-        selected_substat = st.selectbox(f"📊 Wähle eine Stat aus `{selected_category}`:", sorted(all_substats))
+        selected_substat = st.selectbox(f"📊 Wähle einen Stat aus `{selected_category}`:", sorted(all_substats))
 
         if selected_substat:
             # Werte auslesen und DataFrame bauen
